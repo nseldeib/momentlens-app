@@ -114,15 +114,15 @@ export default function CapturePage() {
         </div>
 
         {!user && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+          <div className="mb-6 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
             <div className="text-center">
-              <p className="text-sm text-blue-700 mb-2">Want to explore MomentLens?</p>
+              <p className="text-xs text-blue-600/70 mb-2">Want to explore MomentLens?</p>
               <button
                 onClick={handleDemoSignIn}
                 disabled={isDemoLoading}
-                className="text-blue-600 hover:text-blue-700 font-medium text-sm underline disabled:opacity-50"
+                className="text-blue-600/80 hover:text-blue-700 font-normal text-xs underline underline-offset-2 disabled:opacity-50 transition-colors"
               >
-                {isDemoLoading ? "Loading demo..." : "Try the demo account →"}
+                {isDemoLoading ? "Loading demo..." : "Try the demo account"}
               </button>
             </div>
           </div>
