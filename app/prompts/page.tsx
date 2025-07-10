@@ -22,87 +22,6 @@ export default function PromptsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedPack, setSelectedPack] = useState<PromptPack | null>(null)
 
-  const getFallbackPromptPacks = (): PromptPack[] => [
-    {
-      id: "before-bed",
-      name: "Before Bed",
-      description: "Reflect on your day and prepare for rest",
-      icon: "🌙",
-      questions: [
-        "What was the highlight of your day?",
-        "What are you grateful for today?",
-        "How are you feeling as you wind down?",
-        "What would you like to let go of from today?",
-      ],
-    },
-    {
-      id: "after-work",
-      name: "After Work",
-      description: "Transition from work to personal time",
-      icon: "💼",
-      questions: [
-        "How did work feel today?",
-        "What did you accomplish?",
-        "What are you looking forward to now?",
-        "How do you want to spend your evening?",
-      ],
-    },
-    {
-      id: "moments-of-joy",
-      name: "Moments of Joy",
-      description: "Capture and celebrate positive experiences",
-      icon: "✨",
-      questions: [
-        "What made you smile today?",
-        "What brought you joy in this moment?",
-        "Who or what are you grateful for right now?",
-        "What would you like to remember about this feeling?",
-      ],
-    },
-    {
-      id: "when-anxious",
-      name: "When Anxious",
-      description: "Ground yourself and process difficult feelings",
-      icon: "🌱",
-      questions: [
-        "What are you feeling right now?",
-        "What thoughts are going through your mind?",
-        "What do you need in this moment?",
-        "What would help you feel more grounded?",
-      ],
-    },
-  ]
-
-  const fetchPromptPacks = async () => {
-    try {
-      // First check if the prompt_packs table exists
-      const { data, error } = await supabase.from("prompt_packs").select("*").order("created_at")
-
-      if (error) {
-        // If table doesn't exist, use fallback data
-        if (error.message.includes("does not exist") || error.code === "42P01") {
-          console.log("prompt_packs table not found, using fallback data")
-          setPromptPacks(getFallbackPromptPacks())
-          return
-        }
-        throw error
-      }
-
-      // If no data exists, seed with fallback data
-      if (!data || data.length === 0) {
-        console.log("No prompt packs found, using fallback data")
-        setPromptPacks(getFallbackPromptPacks())
-        return
-      }
-
-      setPromptPacks(data)
-    } catch (error) {
-      console.error("Error fetching prompt packs:", error)
-      // Always fall back to default data on any error
-      setPromptPacks(getFallbackPromptPacks())
-    }
-  }
-
   useEffect(() => {
     const getUser = async () => {
       const {
@@ -115,6 +34,17 @@ export default function PromptsPage() {
 
     getUser()
   }, [])
+
+  const fetchPromptPacks = async () => {
+    try {
+      const { data, error } = await supabase.from("prompt_packs").select("*").order("created_at")
+
+      if (error) throw error
+      setPromptPacks(data || [])
+    } catch (error) {
+      console.error("Error fetching prompt packs:", error)
+    }
+  }
 
   const handleUsePromptPack = (pack: PromptPack) => {
     // Store selected prompt pack in localStorage for the capture page
