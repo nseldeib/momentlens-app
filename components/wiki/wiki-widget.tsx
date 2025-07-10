@@ -44,25 +44,78 @@ interface WikiWidgetProps {
   user: User
 }
 
+const DEFAULT_CATEGORIES = [
+  { id: "default-1", name: "Personal", color: "#10B981" },
+  { id: "default-2", name: "Work", color: "#3B82F6" },
+  { id: "default-3", name: "Learning", color: "#8B5CF6" },
+  { id: "default-4", name: "Projects", color: "#F59E0B" },
+  { id: "default-5", name: "Ideas", color: "#EF4444" },
+]
+
 export function WikiWidget({ user }: WikiWidgetProps) {
   const [entries, setEntries] = useState<WikiEntryData[]>([])
-  const [categories, setCategories] = useState<WikiCategory[]>([])
+  const [categories, setCategories] = useState<WikiCategory[]>(DEFAULT_CATEGORIES)
   const [loading, setLoading] = useState(true)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
   const [filters, setFilters] = useState<WikiFiltersState>({
     tags: [],
-    category: "",
-    status: "",
-    visibility: "",
+    category: "all",
+    status: "all",
+    visibility: "all",
     search: "",
   })
 
   useEffect(() => {
     if (user) {
-      fetchEntries()
-      fetchCategories()
+      initializeUserData()
     }
   }, [user])
+
+  const initializeUserData = async () => {
+    try {
+      // First, ensure default categories exist for the user
+      await createDefaultCategories()
+      // Then fetch all data
+      await Promise.all([fetchEntries(), fetchCategories()])
+    } catch (error) {
+      console.error("Error initializing user data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const createDefaultCategories = async () => {
+    try {
+      // Check if user has any categories
+      const { data: existingCategories, error: checkError } = await supabase
+        .from("wiki_categories")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1)
+
+      if (checkError) {
+        console.error("Error checking categories:", checkError)
+        return
+      }
+
+      // If no categories exist, create defaults
+      if (!existingCategories || existingCategories.length === 0) {
+        const categoriesToInsert = DEFAULT_CATEGORIES.map((category) => ({
+          user_id: user.id,
+          name: category.name,
+          color: category.color,
+        }))
+
+        const { error: insertError } = await supabase.from("wiki_categories").insert(categoriesToInsert)
+
+        if (insertError) {
+          console.error("Error creating default categories:", insertError)
+        }
+      }
+    } catch (error) {
+      console.error("Error in createDefaultCategories:", error)
+    }
+  }
 
   const fetchEntries = async () => {
     try {
@@ -76,8 +129,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
       setEntries(data || [])
     } catch (error) {
       console.error("Error fetching wiki entries:", error)
-    } finally {
-      setLoading(false)
+      setEntries([])
     }
   }
 
@@ -85,10 +137,22 @@ export function WikiWidget({ user }: WikiWidgetProps) {
     try {
       const { data, error } = await supabase.from("wiki_categories").select("*").eq("user_id", user.id).order("name")
 
-      if (error) throw error
-      setCategories(data || [])
+      if (error) {
+        console.error("Error fetching categories:", error)
+        // Use default categories if fetch fails
+        setCategories(DEFAULT_CATEGORIES)
+        return
+      }
+
+      // If no categories returned, use defaults
+      if (!data || data.length === 0) {
+        setCategories(DEFAULT_CATEGORIES)
+      } else {
+        setCategories(data)
+      }
     } catch (error) {
       console.error("Error fetching categories:", error)
+      setCategories(DEFAULT_CATEGORIES)
     }
   }
 
@@ -100,7 +164,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
         summary: "",
         content: "",
         tags: [],
-        category: categories[0]?.name || "",
+        category: categories[0]?.name || "Personal",
         status: "draft" as const,
         priority: "medium" as const,
         is_public: false,
@@ -173,17 +237,17 @@ export function WikiWidget({ user }: WikiWidgetProps) {
     }
 
     // Category filter
-    if (filters.category && entry.category !== filters.category) {
+    if (filters.category && filters.category !== "all" && entry.category !== filters.category) {
       return false
     }
 
     // Status filter
-    if (filters.status && entry.status !== filters.status) {
+    if (filters.status && filters.status !== "all" && entry.status !== filters.status) {
       return false
     }
 
     // Visibility filter
-    if (filters.visibility) {
+    if (filters.visibility && filters.visibility !== "all") {
       if (filters.visibility === "public" && !entry.is_public) return false
       if (filters.visibility === "private" && entry.is_public) return false
     }

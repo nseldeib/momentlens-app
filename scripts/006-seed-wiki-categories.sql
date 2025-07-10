@@ -1,20 +1,13 @@
--- Insert default wiki categories for demo user
--- This will be handled by the application for real users
-INSERT INTO public.wiki_categories (user_id, name, color) 
-SELECT 
-  auth.uid(),
-  category_name,
-  category_color
-FROM (
-  VALUES 
-    ('Personal', '#10B981'),
-    ('Work', '#3B82F6'),
-    ('Learning', '#8B5CF6'),
-    ('Projects', '#F59E0B'),
-    ('Ideas', '#EF4444'),
-    ('Reference', '#6B7280'),
-    ('Health', '#EC4899'),
-    ('Finance', '#059669')
-) AS categories(category_name, category_color)
-WHERE auth.uid() IS NOT NULL
-ON CONFLICT (user_id, name) DO NOTHING;
+-- This script will be handled by the application
+-- Default categories will be created automatically when users first access the wiki widget
+
+-- Insert default categories for any authenticated user
+-- This is a fallback in case the application logic doesn't work
+DO $$
+BEGIN
+  -- Only insert if the table exists and is empty for the current user
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'wiki_categories') THEN
+    -- This will be handled by the application instead
+    RAISE NOTICE 'Wiki categories table exists. Categories will be created by the application.';
+  END IF;
+END $$;

@@ -51,9 +51,9 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
 
   const hasActiveFilters =
     filters.tags.length > 0 ||
-    filters.category !== "all" ||
-    filters.status !== "all" ||
-    filters.visibility !== "all" ||
+    (filters.category && filters.category !== "all") ||
+    (filters.status && filters.status !== "all") ||
+    (filters.visibility && filters.visibility !== "all") ||
     filters.search
 
   return (
@@ -71,7 +71,7 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
 
       {/* Filter Controls */}
       <div className="flex flex-wrap gap-2">
-        <Select value={filters.category} onValueChange={(value) => updateFilter("category", value)}>
+        <Select value={filters.category || "all"} onValueChange={(value) => updateFilter("category", value)}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -85,7 +85,7 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
           </SelectContent>
         </Select>
 
-        <Select value={filters.status} onValueChange={(value) => updateFilter("status", value)}>
+        <Select value={filters.status || "all"} onValueChange={(value) => updateFilter("status", value)}>
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -97,7 +97,7 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
           </SelectContent>
         </Select>
 
-        <Select value={filters.visibility} onValueChange={(value) => updateFilter("visibility", value)}>
+        <Select value={filters.visibility || "all"} onValueChange={(value) => updateFilter("visibility", value)}>
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Visibility" />
           </SelectTrigger>

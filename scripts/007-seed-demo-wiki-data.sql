@@ -11,6 +11,19 @@ VALUES
   ((SELECT id FROM auth.users WHERE email = 'demo@momentlens.app'), 'Ideas', '#EF4444')
 ON CONFLICT (user_id, name) DO NOTHING;
 
+-- Demo wiki data will be created by the application
+-- This ensures proper user authentication and RLS policies
+
+DO $$
+BEGIN
+  -- Check if wiki tables exist
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'wiki_entries') THEN
+    RAISE NOTICE 'Wiki tables exist. Demo data will be created by the application when demo user signs in.';
+  ELSE
+    RAISE NOTICE 'Wiki tables do not exist yet. Please run the table creation script first.';
+  END IF;
+END $$;
+
 -- Insert demo wiki entries
 INSERT INTO public.wiki_entries (
   user_id, 

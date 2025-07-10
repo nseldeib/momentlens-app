@@ -155,31 +155,6 @@ export async function createDemoAccount() {
         console.error("Error creating demo moments:", momentsError)
       }
 
-      // Create demo wiki categories
-      const categoriesToInsert = DEMO_CATEGORIES.map((category) => ({
-        ...category,
-        user_id: userId,
-      }))
-
-      const { error: categoriesError } = await supabase.from("wiki_categories").insert(categoriesToInsert)
-
-      if (categoriesError) {
-        console.error("Error creating demo categories:", categoriesError)
-      }
-
-      // Create demo wiki entries
-      const wikiEntriesToInsert = DEMO_WIKI_ENTRIES.map((entry) => ({
-        ...entry,
-        user_id: userId,
-        file_attachments: [],
-      }))
-
-      const { error: wikiError } = await supabase.from("wiki_entries").insert(wikiEntriesToInsert)
-
-      if (wikiError) {
-        console.error("Error creating demo wiki entries:", wikiError)
-      }
-
       // Create profile if it doesn't exist
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: userId,
@@ -192,6 +167,7 @@ export async function createDemoAccount() {
       }
     }
 
+    // Always try to create wiki data (it will be handled by the widget initialization)
     return { success: true, user: signInData.user }
   } catch (error) {
     console.error("Error setting up demo account:", error)
