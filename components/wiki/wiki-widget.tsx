@@ -6,7 +6,8 @@ import { WikiEntry } from "./wiki-entry"
 import { WikiFilters } from "./wiki-filters"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, BookOpen } from "lucide-react"
+import { Plus, BookOpen, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { User } from "@supabase/supabase-js"
 
 interface WikiEntryData {
@@ -56,6 +57,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
   const [entries, setEntries] = useState<WikiEntryData[]>([])
   const [categories, setCategories] = useState<WikiCategory[]>(DEFAULT_CATEGORIES)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
   const [filters, setFilters] = useState<WikiFiltersState>({
     tags: [],
@@ -71,14 +73,43 @@ export function WikiWidget({ user }: WikiWidgetProps) {
     }
   }, [user])
 
+  const checkTablesExist = async () => {
+    try {
+      // Try to query the tables to see if they exist
+      const { error: categoriesError } = await supabase.from("wiki_categories").select("id").limit(1)
+
+      const { error: entriesError } = await supabase.from("wiki_entries").select("id").limit(1)
+
+      if (categoriesError || entriesError) {
+        throw new Error("Wiki tables don't exist or have incorrect schema")
+      }
+
+      return true
+    } catch (error) {
+      console.error("Tables check failed:", error)
+      return false
+    }
+  }
+
   const initializeUserData = async () => {
     try {
+      setError(null)
+
+      // Check if tables exist first
+      const tablesExist = await checkTablesExist()
+      if (!tablesExist) {
+        setError("Wiki tables need to be created. Please run the database setup scripts.")
+        setLoading(false)
+        return
+      }
+
       // First, ensure default categories exist for the user
       await createDefaultCategories()
       // Then fetch all data
       await Promise.all([fetchEntries(), fetchCategories()])
     } catch (error) {
       console.error("Error initializing user data:", error)
+      setError("Failed to initialize wiki data. Please try refreshing the page.")
     } finally {
       setLoading(false)
     }
@@ -95,6 +126,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
 
       if (checkError) {
         console.error("Error checking categories:", checkError)
+        // Don't throw here, just log and continue with defaults
         return
       }
 
@@ -110,10 +142,12 @@ export function WikiWidget({ user }: WikiWidgetProps) {
 
         if (insertError) {
           console.error("Error creating default categories:", insertError)
+          // Don't throw here, just log and continue with defaults
         }
       }
     } catch (error) {
       console.error("Error in createDefaultCategories:", error)
+      // Don't throw here, just log and continue with defaults
     }
   }
 
@@ -125,7 +159,12 @@ export function WikiWidget({ user }: WikiWidgetProps) {
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error fetching entries:", error)
+        setEntries([])
+        return
+      }
+
       setEntries(data || [])
     } catch (error) {
       console.error("Error fetching wiki entries:", error)
@@ -181,6 +220,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
       setExpandedEntry(data.id)
     } catch (error) {
       console.error("Error creating entry:", error)
+      setError("Failed to create new entry. Please try again.")
     }
   }
 
@@ -199,6 +239,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
       setEntries((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...data } : entry)))
     } catch (error) {
       console.error("Error updating entry:", error)
+      setError("Failed to update entry. Please try again.")
     }
   }
 
@@ -214,6 +255,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
       }
     } catch (error) {
       console.error("Error deleting entry:", error)
+      setError("Failed to delete entry. Please try again.")
     }
   }
 
@@ -270,6 +312,25 @@ export function WikiWidget({ user }: WikiWidgetProps) {
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Personal Wiki
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     )
