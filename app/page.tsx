@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Sparkles } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 import { signInWithDemo } from "@/lib/demo-setup"
+import { WikiWidget } from "@/components/wiki/wiki-widget"
 
 const defaultQuestions = [
   "How do you feel right now?",
@@ -105,7 +106,7 @@ export default function CapturePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
-      <div className="max-w-md mx-auto p-4 pt-8">
+      <div className="max-w-4xl mx-auto p-4 pt-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
             MomentLens
@@ -126,53 +127,59 @@ export default function CapturePage() {
           </div>
         )}
 
-        <Card className="rounded-3xl border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-lg font-medium text-gray-800">{defaultQuestions[currentQuestion]}</CardTitle>
-            <div className="flex justify-center gap-2 mt-4">
-              {defaultQuestions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                    index === currentQuestion ? "bg-blue-600 w-6" : "bg-gray-300"
-                  }`}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Moment Capture Card */}
+          <Card className="rounded-3xl border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-lg font-medium text-gray-800">{defaultQuestions[currentQuestion]}</CardTitle>
+              <div className="flex justify-center gap-2 mt-4">
+                {defaultQuestions.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentQuestion(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      index === currentQuestion ? "bg-blue-600 w-6" : "bg-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <MoodPicker value={mood} onChange={setMood} />
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Your thoughts</label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="What's on your mind?"
+                  className="rounded-2xl border-gray-200 resize-none min-h-[120px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  maxLength={500}
                 />
-              ))}
-            </div>
-          </CardHeader>
+                <div className="text-right text-xs text-gray-500">{content.length}/500</div>
+              </div>
 
-          <CardContent className="space-y-6">
-            <MoodPicker value={mood} onChange={setMood} />
+              <TagInput tags={tags} onChange={setTags} />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Your thoughts</label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="What's on your mind?"
-                className="rounded-2xl border-gray-200 resize-none min-h-[120px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                maxLength={500}
-              />
-              <div className="text-right text-xs text-gray-500">{content.length}/500</div>
-            </div>
+              <Button
+                onClick={handleSubmit}
+                disabled={!content.trim() || isSubmitting}
+                className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02]"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : showSuccess ? (
+                  <Sparkles className="mr-2 h-5 w-5" />
+                ) : null}
+                {isSubmitting ? "Saving..." : showSuccess ? "Saved!" : "Save Moment"}
+              </Button>
+            </CardContent>
+          </Card>
 
-            <TagInput tags={tags} onChange={setTags} />
-
-            <Button
-              onClick={handleSubmit}
-              disabled={!content.trim() || isSubmitting}
-              className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02]"
-            >
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : showSuccess ? (
-                <Sparkles className="mr-2 h-5 w-5" />
-              ) : null}
-              {isSubmitting ? "Saving..." : showSuccess ? "Saved!" : "Save Moment"}
-            </Button>
-          </CardContent>
-        </Card>
+          {/* Wiki Widget */}
+          {user && <WikiWidget user={user} />}
+        </div>
       </div>
 
       <Navigation />
