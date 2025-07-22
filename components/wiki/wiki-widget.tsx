@@ -6,7 +6,7 @@ import { WikiEntry } from "./wiki-entry"
 import { WikiFilters } from "./wiki-filters"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, BookOpen, AlertCircle } from "lucide-react"
+import { Plus, BookOpen, AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { User } from "@supabase/supabase-js"
 
@@ -59,6 +59,7 @@ export function WikiWidget({ user }: WikiWidgetProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [filters, setFilters] = useState<WikiFiltersState>({
     tags: [],
     category: "all",
@@ -71,22 +72,29 @@ export function WikiWidget({ user }: WikiWidgetProps) {
     if (user) {
       initializeUserData()
     }
-  }, [user])
+  }, [user, retryCount])
 
-  const checkTablesExist = async () => {
+  const checkDatabaseSchema = async () => {
     try {
-      // Try to query the tables to see if they exist
-      const { error: categoriesError } = await supabase.from("wiki_categories").select("id").limit(1)
+      // Check if the tables exist with correct schema by trying to select specific columns
+      const { error: categoriesSchemaError } = await supabase
+        .from("wiki_categories")
+        .select("id, user_id, name, color")
+        .limit(0)
 
-      const { error: entriesError } = await supabase.from("wiki_entries").select("id").limit(1)
+      const { error: entriesSchemaError } = await supabase
+        .from("wiki_entries")
+        .select("id, user_id, title, summary, content, tags, category, status, priority, is_public")
+        .limit(0)
 
-      if (categoriesError || entriesError) {
-        throw new Error("Wiki tables don't exist or have incorrect schema")
+      if (categoriesSchemaError || entriesSchemaError) {
+        console.error("Schema check failed:", { categoriesSchemaError, entriesSchemaError })
+        return false
       }
 
       return true
     } catch (error) {
-      console.error("Tables check failed:", error)
+      console.error("Database schema check failed:", error)
       return false
     }
   }
@@ -94,22 +102,24 @@ export function WikiWidget({ user }: WikiWidgetProps) {
   const initializeUserData = async () => {
     try {
       setError(null)
+      setLoading(true)
 
-      // Check if tables exist first
-      const tablesExist = await checkTablesExist()
-      if (!tablesExist) {
-        setError("Wiki tables need to be created. Please run the database setup scripts.")
+      // Check database schema first
+      const schemaValid = await checkDatabaseSchema()
+      if (!schemaValid) {
+        setError(
+          "Wiki database tables need to be set up. Please run the database migration script (009-recreate-wiki-tables.sql) to create the required tables.",
+        )
         setLoading(false)
         return
       }
 
-      // First, ensure default categories exist for the user
+      // Initialize default categories and fetch data
       await createDefaultCategories()
-      // Then fetch all data
       await Promise.all([fetchEntries(), fetchCategories()])
     } catch (error) {
       console.error("Error initializing user data:", error)
-      setError("Failed to initialize wiki data. Please try refreshing the page.")
+      setError("Failed to initialize wiki data. This might be a database configuration issue.")
     } finally {
       setLoading(false)
     }
@@ -126,8 +136,8 @@ export function WikiWidget({ user }: WikiWidgetProps) {
 
       if (checkError) {
         console.error("Error checking categories:", checkError)
-        // Don't throw here, just log and continue with defaults
-        return
+        // If this fails, it's likely a schema issue
+        throw new Error(`Database schema error: ${checkError.message}`)
       }
 
       // If no categories exist, create defaults
@@ -147,7 +157,10 @@ export function WikiWidget({ user }: WikiWidgetProps) {
       }
     } catch (error) {
       console.error("Error in createDefaultCategories:", error)
-      // Don't throw here, just log and continue with defaults
+      // Re-throw schema errors but not other errors
+      if (error instanceof Error && error.message.includes("schema")) {
+        throw error
+      }
     }
   }
 
@@ -178,12 +191,10 @@ export function WikiWidget({ user }: WikiWidgetProps) {
 
       if (error) {
         console.error("Error fetching categories:", error)
-        // Use default categories if fetch fails
         setCategories(DEFAULT_CATEGORIES)
         return
       }
 
-      // If no categories returned, use defaults
       if (!data || data.length === 0) {
         setCategories(DEFAULT_CATEGORIES)
       } else {
@@ -259,6 +270,10 @@ export function WikiWidget({ user }: WikiWidgetProps) {
     }
   }
 
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1)
+  }
+
   const filteredEntries = entries.filter((entry) => {
     // Search filter
     if (filters.search) {
@@ -329,8 +344,12 @@ export function WikiWidget({ user }: WikiWidgetProps) {
         <CardContent>
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="mb-4">{error}</AlertDescription>
           </Alert>
+          <Button onClick={handleRetry} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </CardContent>
       </Card>
     )

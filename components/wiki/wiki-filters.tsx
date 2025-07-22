@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Check, ChevronsUpDown, Search, X } from "lucide-react"
+import { Check, X, Search, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface WikiFiltersState {
@@ -26,21 +26,10 @@ interface WikiFiltersProps {
 }
 
 export function WikiFilters({ filters, onFiltersChange, availableTags, availableCategories }: WikiFiltersProps) {
-  const [tagComboOpen, setTagComboOpen] = useState(false)
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false)
 
   const updateFilters = (updates: Partial<WikiFiltersState>) => {
     onFiltersChange({ ...filters, ...updates })
-  }
-
-  const addTag = (tag: string) => {
-    if (!filters.tags.includes(tag)) {
-      updateFilters({ tags: [...filters.tags, tag] })
-    }
-    setTagComboOpen(false)
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    updateFilters({ tags: filters.tags.filter((tag) => tag !== tagToRemove) })
   }
 
   const clearAllFilters = () => {
@@ -51,6 +40,20 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
       visibility: "all",
       search: "",
     })
+  }
+
+  const removeTag = (tagToRemove: string) => {
+    updateFilters({
+      tags: filters.tags.filter((tag) => tag !== tagToRemove),
+    })
+  }
+
+  const addTag = (tagToAdd: string) => {
+    if (!filters.tags.includes(tagToAdd)) {
+      updateFilters({
+        tags: [...filters.tags, tagToAdd],
+      })
+    }
   }
 
   const hasActiveFilters =
@@ -116,26 +119,35 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
         </Select>
 
         {/* Tag Filter */}
-        <Popover open={tagComboOpen} onOpenChange={setTagComboOpen}>
+        <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={tagComboOpen}
-              className="w-[140px] justify-between bg-transparent"
-            >
-              Add Tag Filter
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <Button variant="outline" size="sm" className="h-10 bg-transparent">
+              <Tag className="h-4 w-4 mr-2" />
+              Tags
+              {filters.tags.length > 0 && (
+                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                  {filters.tags.length}
+                </Badge>
+              )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0">
+          <PopoverContent className="w-[200px] p-0" align="start">
             <Command>
               <CommandInput placeholder="Search tags..." />
               <CommandList>
                 <CommandEmpty>No tags found.</CommandEmpty>
                 <CommandGroup>
                   {availableTags.map((tag) => (
-                    <CommandItem key={tag} value={tag} onSelect={() => addTag(tag)}>
+                    <CommandItem
+                      key={tag}
+                      onSelect={() => {
+                        if (filters.tags.includes(tag)) {
+                          removeTag(tag)
+                        } else {
+                          addTag(tag)
+                        }
+                      }}
+                    >
                       <Check className={cn("mr-2 h-4 w-4", filters.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
                       {tag}
                     </CommandItem>
@@ -148,25 +160,44 @@ export function WikiFilters({ filters, onFiltersChange, availableTags, available
 
         {/* Clear Filters */}
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-            Clear All
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10">
+            <X className="h-4 w-4 mr-2" />
+            Clear
           </Button>
         )}
       </div>
 
-      {/* Active Tag Filters */}
-      {filters.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+      {/* Active Filters Display */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap gap-2">
+          {filters.search && (
+            <Badge variant="secondary" className="gap-1">
+              Search: {filters.search}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilters({ search: "" })} />
+            </Badge>
+          )}
+          {filters.category && filters.category !== "all" && (
+            <Badge variant="secondary" className="gap-1">
+              Category: {filters.category}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilters({ category: "all" })} />
+            </Badge>
+          )}
+          {filters.status && filters.status !== "all" && (
+            <Badge variant="secondary" className="gap-1">
+              Status: {filters.status}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilters({ status: "all" })} />
+            </Badge>
+          )}
+          {filters.visibility && filters.visibility !== "all" && (
+            <Badge variant="secondary" className="gap-1">
+              Visibility: {filters.visibility}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilters({ visibility: "all" })} />
+            </Badge>
+          )}
           {filters.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-              <button
-                onClick={() => removeTag(tag)}
-                className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-                aria-label={`Remove ${tag} filter`}
-              >
-                <X className="h-3 w-3" />
-              </button>
+            <Badge key={tag} variant="secondary" className="gap-1">
+              Tag: {tag}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
             </Badge>
           ))}
         </div>
